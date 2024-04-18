@@ -9,6 +9,14 @@
 #include <networkit/io/GMLGraphWriter.hpp>
 //#include <networkit/graph/Graph.hpp>
 
+void printSet(const std::set<vertex>& set) {
+    std::cout << "Predecessors Set contains: ";
+    for (const auto& elem : set) {
+        std::cout << elem << " ";
+    }
+    std::cout << std::endl;
+} 
+
 int main() {
 /*  1
     // Utilizzo del costruttore di default
@@ -56,37 +64,28 @@ int main() {
 
 
 
+    
+  
+
+
+
+
+
     std::vector<int> verticesSet = {1, 2, 3,4,5};
-    std::vector<int> verticesSet2 = {4, 5, 6};
-    std::vector<int> verticesSet3 = {7, 8, 9,10,12,34,56};
-    std::vector<int> verticesSet4 = {7, 8, 9};
-    std::vector<int> verticesSet5 = {1,2,3,4,5};
-
     path newPath(verticesSet);
-    path path_to_evaluate(verticesSet2);
-    path setPath2(verticesSet3);
-    path setPath4(verticesSet4);
-    path setPath5(verticesSet5);
-
-    std::set<path> paths;
-    paths.insert(newPath);
-    paths.insert(path_to_evaluate);
-    paths.insert(setPath2);
-
-
-
+    newPath.printPath();
     // Prova a trovare un path specifico
-    std::vector<int> verticesSet100 = {12, 22, 32,33};
+    std::vector<int> verticesSet100 = {5, 22, 32,33};
     path searchPath(verticesSet100);  // Path che stiamo cercando
     
-    newPath.printPath();
-    setPath2.printPath();
-    std::cout << newPath.w+setPath2.w<< std::endl;
-    path nuovo(newPath,setPath2);
+    //newPath.printPath();
+    searchPath.printPath();
+    path nuovo(newPath,searchPath,true);
     nuovo.printPath();
-    std::cout << nuovo.w<< std::endl;
-    path p1;
-    p1.getFirstNode();
+    
+
+
+
  
 
 
@@ -98,7 +97,7 @@ int main() {
   
     //gi il grafo utilizzando GraphManager::read_hist
     NetworKit::Graph *graph = new NetworKit::Graph();
-    GraphManager::read_hist("further_gab_gadget.hist", &graph);
+    GraphManager::read_hist("critical.hist", &graph);
 
     // Verifica che il grafo sia stato letto correttamente
     if (!graph) {
@@ -122,10 +121,10 @@ int main() {
 
     std::cout<<"Graph after CC has "<<graph->numberOfNodes()<<" vertices and "<<graph->numberOfEdges()<<" edges\n";
     //ciao
-    size_t K = 3; // Numero di percorsi più brevi da trovare
+    size_t K = 4; // Numero di percorsi più brevi da trovare
     vertex root = 0;
 
-    //KBFS_global* KBFS_global_MANAGER = new KBFS_global(graph, K, root);
+    KBFS_global* KBFS_global_MANAGER = new KBFS_global(graph, K, root);
     
     //for (NetworKit::node u : graph->nodeRange()) {
     //    std::cout << "Nodo: " << u << std::endl;
@@ -155,7 +154,7 @@ int main() {
     });
 */
     
-    //KBFS_global_MANAGER->generalized_bfs();
+    KBFS_global_MANAGER->generalized_bfs();
     //KBFS_global_MANAGER->binary_TEST();
 
 /*

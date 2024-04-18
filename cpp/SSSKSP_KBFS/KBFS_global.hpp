@@ -32,8 +32,8 @@ public:
     std::vector<vertex> seq;
     dist w;
 
-    static const vertex null_vertex = round(std::numeric_limits<vertex>::max() / 2);
-    static const dist null_distance = round(std::numeric_limits<dist>::max() / 2);
+    static const vertex null_vertex; //= round(std::numeric_limits<vertex>::max() / 2);
+    static const dist null_distance; //= round(std::numeric_limits<dist>::max() / 2);
 
     using iterator = std::vector<vertex>::iterator;
     //using const_iterator = std::vector<vertex>::const_iterator;

@@ -17,6 +17,7 @@ KBFS_global::KBFS_global(NetworKit::Graph *G, int num_k, vertex r)
     pigreco_set(G->numberOfNodes()), 
     last_det_path(G->numberOfNodes(),0), // Usa std::numeric_limits per 'null_distance'
     ignore_nodes(G->numberOfNodes(), false),
+    queue_ignore_nodes(),
     locally_ignore_nodes(G->numberOfNodes(), false),
     locally_ignore_edges(G->numberOfEdges(), false), // Assumendo un modo per ottenere il numero di archi
     //queue_dist_profile(G->numberOfNodes()),
@@ -59,7 +60,8 @@ KBFS_global::~KBFS_global() {
     // quindi non ci sono operazioni specifiche di deallocazione richieste nel distruttore.
 }
 
-
+const vertex path::null_vertex = static_cast<vertex>(std::numeric_limits<vertex>::max() / 2);
+const dist path::null_distance = static_cast<dist>(std::numeric_limits<dist>::max() / 2);
 
 //const vertex KBFS_global::null_vertex = round(std::numeric_limits<vertex>::max()/2);
 //const dist KBFS_global::null_distance = round(std::numeric_limits<dist>::max()/2);
@@ -92,13 +94,13 @@ void KBFS_global::generalized_bfs() {
         setptx.insert(u);
 
         // Crea l'entry per PQ
-        entry e = std::make_tuple(1, u, p,setptx, "regular", KBFS_global::null_vertex, std::vector<path>());
+        entry e = std::make_tuple(1, u, p,setptx, "regular", path::null_vertex, std::vector<path>());
         PQ.push_back(e);
 
         //printEntryPQ(e);
 
         // Aggiungi la pair (1, path) nella deque corrispondente a u in distance_profile
-        distance_profile[u].push_back(std::make_pair(1, p));
+        distance_profile[u].push_back(std::make_pair(p.w, p));
 
         // Verifica che distance_profile[u] sia ordinato
         assert(std::is_sorted(distance_profile[u].begin(), distance_profile[u].end(), [](const auto& a, const auto& b) {
@@ -112,7 +114,7 @@ void KBFS_global::generalized_bfs() {
     // Verifica che il numero di entry inserite in PQ sia uguale al numero di vicini di root
     assert(PQ.size() == num_neighbors_of_root);
 
-    // Converti PQ in un min heap(vedi codice prof)
+    // Converte PQ in un min heap(vedi codice prof)
     std::make_heap(PQ.begin(), PQ.end(), CompareEntry());
 
     while (!PQ.empty()) { 
@@ -135,8 +137,10 @@ void KBFS_global::generalized_bfs() {
         assert(vtx != root);
         assert(ptx.seq.size() == setptx.size());
         assert(num_non_sat > 0); 
+
         bool ptxFound = std::find(top_k[vtx].begin(), top_k[vtx].end(), ptx) != top_k[vtx].end();
         assert(!ptxFound);  //ptx non sia trovato in top_k[vtx]
+
         if (top_k[vtx].size() < K) {
             assert(non_sat[vtx]);
             //assert(wgt == distance_profile[vtx].front().first);
@@ -232,6 +236,7 @@ void KBFS_global::generalized_bfs() {
 
 void KBFS_global::standard(dist WEIG, vertex VERT, const path& PATH, const std::set<vertex>& PATHSET, const std::string& flag, vertex source, const pathlist& paths) {
     assert(top_k[VERT].size() < K);
+    assert(VERT==PATH.getLastNode());
     //AGGIUNGO IL CAMMINO MINIMO ESTRATTO
     top_k[VERT].push_back(PATH);
     
@@ -254,7 +259,7 @@ void KBFS_global::standard(dist WEIG, vertex VERT, const path& PATH, const std::
         // Pulisci LA distance profile per VERT
         distance_profile[VERT].clear();
 
-        // Se non ci sono più nodi non saturi, termina l'esecuzione
+        // Se non ci sono più nodi non saturi, questo è stato l'ultimo percorso e termina l'esecuzione
         if (num_non_sat == 0) {
             return;
         }
@@ -311,15 +316,17 @@ void KBFS_global::standard(dist WEIG, vertex VERT, const path& PATH, const std::
             entry newEntry = std::make_tuple(WEIG + 1, ngx,newPath, newPATHSET, flag, source, path_to_add[ngx]);
             //printEntryPQ(newEntry);
             assert(std::find(PQ.begin(), PQ.end(),std::make_tuple(WEIG + 1, ngx, newPath, newPATHSET, flag, source, path_to_add[ngx])) == PQ.end());
-            PQ.push_back(std::make_tuple(WEIG + 1, ngx,newPath, newPATHSET, flag, source, path_to_add[ngx]));
+            //PQ.push_back(std::make_tuple(WEIG + 1, ngx,newPath, newPATHSET, flag, source, path_to_add[ngx]));
+            PQ.push_back(newEntry);
             path_to_add[ngx].clear(); // equivalente a self.path_to_add[ngx]=[] in Python
         } else {
             //Controllo se l'entry esiste già in PQ
             //std::cout<<"Aggiunta in PQ ";
-            entry newEntry = std::make_tuple(WEIG + 1, ngx, newPath, newPATHSET, "reg", null_vertex, std::vector<path>());
+            entry newEntry = std::make_tuple(WEIG + 1, ngx, newPath, newPATHSET, "reg", path::null_vertex, std::vector<path>());
             //printEntryPQ(newEntry);
-            assert(std::find(PQ.begin(), PQ.end(),std::make_tuple(WEIG + 1, ngx, newPath, newPATHSET, "reg", null_vertex, std::vector<path>())) == PQ.end());
-            PQ.push_back(std::make_tuple(WEIG + 1, ngx, newPath, newPATHSET, "reg", null_vertex, std::vector<path>()));
+            assert(std::find(PQ.begin(), PQ.end(),std::make_tuple(WEIG + 1, ngx, newPath, newPATHSET, "reg", path::null_vertex, std::vector<path>())) == PQ.end());
+            //PQ.push_back(std::make_tuple(WEIG + 1, ngx, newPath, newPATHSET, "reg", path::null_vertex, std::vector<path>()));
+            PQ.push_back(newEntry);
         }   
    
        // assert(std::is_sorted(PQ.begin(), PQ.end(), CompareEntry()));
@@ -362,13 +369,14 @@ void KBFS_global::PathsForward(std::set<vertex>& neighbors,const std::vector<pat
         // Controlla se il percorso è vuoto o se il nodo finale non è saturo
         // oppure se la lunghezza del percorso supera il bound (path.seq.size() > bound[path.seq.back())
         // attenzione sul terzo controllo perchè i p in paths non partono dalla root!!! !!!!!!!!!
-        if (p.seq.empty() || !non_sat[p.seq.back()] || p.w > bound[p.seq.back()]) {
+        if (p.seq.empty() || !non_sat[p.getLastNode()] || p.w > bound[p.getLastNode()]) {
             continue;
         }
  
-        vertex firstNode = p.seq.front();
-        std::vector<int> subVector(p.seq.begin() + 1, p.seq.end());
-        path subPath(subVector);
+        vertex firstNode = p.getFirstNode();
+        //std::vector<int> subVector(p.seq.begin() + 1, p.seq.end());uttore con iteratori
+        //costr
+        path subPath(p.seq.begin() + 1, p.seq.end());
         
         neighbors.insert(firstNode);
         
@@ -439,20 +447,17 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
         for (const auto& p : paths) {
             // Controlla se il percorso è vuoto o se il nodo finale non è saturo
             // oppure se la lunghezza del percorso supera il bound (path.seq.size() > bound[path.seq.back())
-            if (p.seq.empty() || !non_sat[p.seq.back()] || p.w > bound[p.seq.back()]) {
+            if (p.isEmpty() || !non_sat[p.getLastNode()] || p.w > bound[p.getLastNode()]) {
                 continue;
             }
 
-            vertex firstNode = p.seq.front();
-            std::vector<int> subVector(p.seq.begin() + 1, p.seq.end());
-            path subPath(subVector);
+            vertex firstNode = p.getFirstNode();
+            //std::vector<int> subVector(p.seq.begin() + 1, p.seq.end());
+            path subPath(p.seq.begin() + 1, p.seq.end());
             
             neighbors.insert(firstNode);
             
-            // Se path_to_add deve accettare vettori di vertex come sottopercorsi, potrebbe essere necessaria una conversione
-            //path newPath(subPath);
-            // Imposta newPath.w o qualsiasi altra proprietà necessaria
-            skip.insert(p.seq.back());
+            skip.insert(p.getLastNode());
             path_to_add[firstNode].push_back(subPath);
         }
     }
@@ -470,6 +475,7 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
                 it = pigreco_set[VERT].erase(it); // Rimuove l'elemento corrente e probabilmente spoesta anche l'it al prossimo
                 continue;
             } 
+            //se già è finito in neighbors con PathsForward
             if(skip.find(vr) != skip.end()){
                 ++it; 
                 continue;
@@ -543,7 +549,8 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
  
 
                 vertex detFirstVertex = DET.seq[1];
-                path detSubPath(DET.seq.begin() + 1, DET.seq.end()); // Crea un sottopercorso escludendo il primo vertice di DET
+                //path detSubPath(DET.seq.begin() + 1, DET.seq.end());// Crea un sottopercorso escludendo il primo vertice di DET
+                path detSubPath(DET.seq.begin() + 2, DET.seq.end()); // Crea un sottopercorso escludendo I PRIMI DUE VERTICI
 
                 // Verifica se detFirstVertex non è tra i vicini e nel caso lo mette
                 if (neighbors.find(detFirstVertex) == neighbors.end()) {
@@ -553,15 +560,16 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
                 else{
                     // Se il sottopercorso non è già presente per detFirstVertex, aggiungilo
                     //"""ragionare se questo controllo sull'unicità è esseziale"""
-                    auto& pathsForVertex = path_to_add[detFirstVertex];
-                    if (std::find(pathsForVertex.begin(), pathsForVertex.end(), detSubPath) == pathsForVertex.end()) {
-                        pathsForVertex.push_back(detSubPath);
-                    }
-                    
+                    //auto& pathsForVertex = path_to_add[detFirstVertex];
+                    //if (std::find(pathsForVertex.begin(), pathsForVertex.end(), detSubPath) == pathsForVertex.end()) {
+                     //   pathsForVertex.push_back(detSubPath);
+                    //}
+                    assert(std::find(path_to_add[detFirstVertex].begin(), path_to_add[detFirstVertex].end(), detSubPath) == path_to_add[detFirstVertex].end());
+                    path_to_add[detFirstVertex].push_back(detSubPath);
                     assert(neighbors.find(detFirstVertex) != neighbors.end());
                     assert(neighbors.size() <= graph->degree(VERT) - 1);
 
-                    /*  SU PYTHON C'È DUE
+                    /*  SU PYTHON Ci sono, qui sono state gestite diversamente
                     if (n_generated == max_to_generate) {
                         """PERCHE DISTANCE_PROFILE È SVUOTATA? ragionare """
                         distance_profile[VERT].clear(); 
@@ -673,9 +681,14 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
                         */
 
                         vertex detFirstVertex = DET.seq[1];
+                        //path detSubPath(DET.seq.begin() + 1, DET.seq.end());// Crea un sottopercorso escludendo il primo vertice di DET
+                        path detSubPath(DET.seq.begin() + 2, DET.seq.end()); 
+
+                        //VECCHIA VERSIONE
+                        //vertex detFirstVertex = DET.seq[1];
                         //"""controllare: DET+1 o DET+2"""
-                        path detSubPath_temp(DET.seq.begin() + 1, DET.seq.end());
-                        path detSubPath(PATH,detSubPath_temp); // Escludi il primo nodo di DET dal sottopercorso
+                        //path detSubPath_temp(DET.seq.begin() + 1, DET.seq.end());
+                        //path detSubPath(PATH,detSubPath_temp); // Escludi il primo nodo di DET dal sottopercorso
 
                         //""" se non funziona il costtruttore con i due iteratori fare:"""
                         //std::vector<vertex> subVector(DET.seq.begin() + 2, DET.seq.end());
@@ -689,10 +702,15 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
                             path_to_add[detFirstVertex].push_back(detSubPath);
                         } else {
                                 //Ragionare se occorre questo controllo
-                                auto& pathsForVertex = path_to_add[detFirstVertex];
-                                if (std::find(pathsForVertex.begin(), pathsForVertex.end(), detSubPath) == pathsForVertex.end()) {
-                                    pathsForVertex.push_back(detSubPath);
-                                }
+                                //auto& pathsForVertex = path_to_add[detFirstVertex];
+                                //if (std::find(pathsForVertex.begin(), pathsForVertex.end(), detSubPath) == pathsForVertex.end()) {
+                                //    pathsForVertex.push_back(detSubPath);
+                                //}
+                                assert(std::find(path_to_add[detFirstVertex].begin(), path_to_add[detFirstVertex].end(), detSubPath) == path_to_add[detFirstVertex].end());
+                                path_to_add[detFirstVertex].push_back(detSubPath);
+                                assert(neighbors.find(detFirstVertex) != neighbors.end());
+                                assert(neighbors.size() <= graph->degree(VERT) - 1);
+
                                 /*
                                 if (n_generated == max_to_generate) {
                                     // Pulisci detours se hai generato il numero massimo di detours
@@ -777,8 +795,7 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
 
         if (non_sat[ngx]) {
             if (detour_done[ngx]) {
-                //qui nel codice python fa le successive operazioni con PATH e non newPath 
-                //ma hon ha troppo senso
+                
                 if (binary_search_alt(distance_profile[ngx], newPath)) {
                     if (last_det_path[ngx] < newPath.w) {
                         detour_done[ngx] = false;
@@ -799,7 +816,7 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
 
 
 void KBFS_global::init_avoidance(const path& avoid) {
-    assert(!avoid.seq.empty() && avoid.seq.front() == root);
+    assert(!avoid.isEmpty() && avoid.getFirstNode() == root);
     //dovrebbe escludere l'ultimo elemento?
     for (size_t i = 0; i < avoid.seq.size() - 1; ++i) {
         vertex u = avoid.seq[i];
@@ -826,6 +843,10 @@ void KBFS_global::clean_avoidance() {
 int KBFS_global::count(vertex vr) {
     //peso del cammino più lungo tra quelli dei cammini minimi di vr
     dist wg = top_k[vr].back().w;
+
+    if (top_k[vr].empty()) return 0;
+    if (distance_profile[vr].empty()) return 0;
+
     int count = 0;
     for (auto& pair : distance_profile[vr]) {
         if (wg == pair.first) {
@@ -859,7 +880,7 @@ bool KBFS_global::is_simple(const path& p) {
 
 
 std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t at_most_to_be_found, dist dist_path, const path& coming_path, size_t count_value) {
-    // Verifiche iniziali con asserzioni
+    
     assert(top_k[target].size() >= 1);
     assert(top_k[target].size() < K);
     assert(std::is_sorted(top_k[target].begin(), top_k[target].end(), [](const path& a, const path& b) { return a.seq.size() < b.seq.size(); }));
@@ -911,7 +932,7 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
         //assert(!altP.empty())
         assert(altP.getFirstNode() == source && altP.getLastNode() == target) ;
         //controllare altP.w+dist_path+1, se serve l'1
-        assert(altP.w+dist_path+1<bound[target]);
+        assert(altP.w+dist_path<bound[target]);
         YenEntry entry(altP.w , altP); 
         yen_PQ.push_back(entry); // Add entry 
         std::push_heap(yen_PQ.begin(), yen_PQ.end()); // Mantieni le proprietà dell'heap
@@ -923,7 +944,7 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
     } catch (const std::exception& e) {
         // Gestisci altre eccezioni potenziali
         std::cerr << "Unexpected error: " << e.what() << std::endl;
-        throw; // Rilancia l'eccezione per ulteriore gestione
+        //throw; // Rilancia l'eccezione per ulteriore gestione
     }
 
 
@@ -932,12 +953,12 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
         YenEntry minEntry = yen_PQ.back(); // Ottieni l'elemento minore
         yen_PQ.pop_back(); // Rimuovi l'elemento dall'heap
         
-        path P_det = minEntry.p; //  percorso dall'entry estratta
+        path P_det = minEntry.p; //  path dall'entry estratta
 
         //detours.push_back(P_det)
         
         if (distance_profile[target].size() - count(target) >= at_most_to_be_found &&
-            P_det.getSize()- 1 + dist_path >= distance_profile[target][count_value + at_most_to_be_found - 1].first) {
+            P_det.getSize()- 1 + dist_path >= distance_profile[target][count_value + at_most_to_be_found].first) {
             // Pulisci le strutture e termina
             // cancellare PQ,paths ma c++ gestisce le variabili locali
             //detours.clear(); 
@@ -962,7 +983,7 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
         }        
 
         //se non hanno il vertice in comune devo levare -1 a P_det.w + distPath
-        if (P_det.seq.size() -1 + dist_path >= bound[target]) {
+        if (P_det.w + dist_path >= bound[target]) {
             //yen_PQ.clear(); 
             //paths.clear(); 
             //detours_found.clear(); 
@@ -1063,12 +1084,15 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
                 vertex lRootLastVertex = l_root.getLastNode(); 
                 path pgt = bidir_BFS(lRootLastVertex, target, bound[target] - (dist_path + l_root.w));
                 
-
-                size_t combinedPathLength = pgt.w - 1 + (l_root.w);
-                assert(dist_path + combinedPathLength < bound[target]);
-
                 // Costruttore passando true: lRoot (escluso l'ultimo elemento) +  pgt
                 path newPath(l_root,pgt,true);
+                //size_t combinedPathLength = pgt.w + (l_root.w);
+                //assert(dist_path + combinedPathLength < bound[target]);
+                //forse serve -1 per il nodo di congiunzione
+                assert(dist_path + newPath.w < bound[target]);
+
+                // Costruttore passando true: lRoot (escluso l'ultimo elemento) +  pgt
+                //path newPath(l_root,pgt,true);
 
                 assert(newPath.w < bound[target] - dist_path);
                 assert(!newPath.isEmpty() && newPath.getFirstNode() == source && newPath.getLastNode()  == target);
@@ -1103,11 +1127,12 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
 
                 
             } catch (const NoPathException& e) {
+                continue; //CONTROLLA
                 //  gestione l'eccezione specifica NoPathException
             } catch (const std::exception& e) {
                 // Qui gestisci altre eccezioni inaspettate
                 std::cerr << "Unexpected error: " << e.what() << std::endl;
-                throw; // Puoi rilanciare l'eccezione per ulteriore gestione esterna
+                //throw; // rilanciare l'eccezione per ulteriore gestione esterna
             }
 
             //fatto sopra
@@ -1116,12 +1141,12 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
             //    locally_queue_ignore_nodes.push_back(lRootLastVertex);
             //}
 
-            // gli archi vanno ripristinati ad ogni iterazione 
+            // gli archi vanno ripristinati ad ogni iterazione, su python è sbagliato
             while (!locally_queue_ignore_edges.empty()) {
                 edge_id e_id = locally_queue_ignore_edges.front();
-                assert(locally_ignore_edges[e_id]); // Verifica che l'arco e_id sia marcato come ignorato localmente.
+                assert(locally_ignore_edges[e_id]); // Verifica che l'arco e_id sia marcato come ignorato 
                 locally_ignore_edges[e_id] = false; // Rimarca l'arco e_id come non ignorato.
-                locally_queue_ignore_edges.pop_front(); // Rimuove e_id dalla coda degli archi da ignorare localmente.
+                locally_queue_ignore_edges.pop_front(); // Rimuove e_id dalla coda degli archi da ignorare 
             } 
             
         }
@@ -1129,16 +1154,16 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
         //i nodi vanno ripristinati ad ogni estrazione di YENPQ
         while (!locally_queue_ignore_nodes.empty()) {
                 vertex x = locally_queue_ignore_nodes.front();
-                assert(locally_ignore_nodes[x]); // Verifica che il nodo x sia marcato come ignorato localmente.
+                assert(locally_ignore_nodes[x]); // Verifica che il nodo x sia marcato come ignorato
                 locally_ignore_nodes[x] = false; // Rimarca il nodo x come non ignorato.
-                locally_queue_ignore_nodes.pop_front(); // Rimuove x dalla coda dei nodi da ignorare localmente.
+                locally_queue_ignore_nodes.pop_front(); // Rimuove x dalla coda dei nodi da ignorare 
         } 
 
 
 
     } 
     
-    //distance_profile.clear(); // Pulisce il vettore distance_profile
+    //distance_profile.clear(); 
     //detours.clear(); // Pulisce il vettore detours
     paths.clear();
     yen_PQ.clear();
@@ -1155,7 +1180,7 @@ path KBFS_global::bidir_BFS(vertex source, vertex target, dist bound_on_length) 
     
     pred.clear();
     succ.clear();
-    intersection = null_vertex; 
+    intersection = path::null_vertex; 
 
     bidir_pred_succ(source, target, bound_on_length, pred, succ, intersection);
     /* fatto con ECCEZIONE sotto
@@ -1163,15 +1188,15 @@ path KBFS_global::bidir_BFS(vertex source, vertex target, dist bound_on_length) 
         return path();  // Ritorna un percorso vuoto se non c'è intersezione
     }*/
     
-    if (intersection == null_vertex) {
+    if (intersection == path::null_vertex) {
         throw NoPathException("No path found within the given bound length.");
     }
 
     vertex current = intersection;
 
     // Costruzione del percorso dalla sorgente all'intersezione
-    path pre_path;  // Uso un vector temporaneo per costruire il percorso inverso
-    while (current != null_vertex && current != source) {
+    path pre_path;  // Uso un temporaneo per costruire il percorso inverso
+    while (current != path::null_vertex && current != source) {
         pre_path.addVertex(current);
         current = pred[current];
     }
@@ -1181,7 +1206,7 @@ path KBFS_global::bidir_BFS(vertex source, vertex target, dist bound_on_length) 
     // Costruzione del percorso dall'intersezione alla destinazione
     current = intersection;
     path post_path;
-    while (current != null_vertex && current != target) {
+    while (current != path::null_vertex && current != target) {
         post_path.addVertex(current);
         current = succ[current];
     }
@@ -1207,13 +1232,13 @@ void KBFS_global::bidir_pred_succ(vertex source, vertex target, dist bound_on_le
 
     if (target == source) {
         intersection = source; // L'intersezione è il nodo stesso se sorgente e destinazione coincidono
-        pred[source] = null_vertex; // nessun predecessore
-        succ[target] = null_vertex; // Nessun successore 
+        pred[source] = path::null_vertex; // nessun predecessore
+        succ[target] = path::null_vertex; // Nessun successore 
         return;
     }
 
-    pred[source] = null_vertex; // Inizializza il predecessore della sorgente a null
-    succ[target] = null_vertex; // Inizializza il successore del target a null
+    pred[source] = path::null_vertex; // Inizializza il predecessore della sorgente a null
+    succ[target] = path::null_vertex; // Inizializza il successore del target a null
 
     // Fringes per la ricerca in avanti e indietro
     std::deque<vertex> forward_fringe = {source};
@@ -1252,7 +1277,7 @@ void KBFS_global::bidir_pred_succ(vertex source, vertex target, dist bound_on_le
                     }
                 });
                 // Stop SE L'INTERSEZIONE È TROVATA,QUI È OBBL. PERCHE IL RETURN NON TERMINA LA CHIAMATA MA ESCE DALLA LAMBDA
-                if (intersection != null_vertex) break;  
+                if (intersection != path::null_vertex) break;  
             }
             //MOVE consente di trasferire le risorse di un oggetto (come la memoria allocata) da un oggetto a un altro, invece di copiarle.
             // utile per migliorare le performance quando gli oggetti contengono grandi quantità di dati allocati dinamicament
@@ -1276,15 +1301,15 @@ void KBFS_global::bidir_pred_succ(vertex source, vertex target, dist bound_on_le
                     }
                 });
 
-                if (intersection != null_vertex) break;  // Stop SE INTERSEZIONE TROVATA
+                if (intersection != path::null_vertex) break;  // Stop SE INTERSEZIONE TROVATA
             }
             reverse_fringe = std::move(next_level);
         }
 
-        if (intersection != null_vertex) break;  // Exit while loop 
+        if (intersection != path::null_vertex) break;  // Exit while loop 
     }
 
-    if (intersection == null_vertex) {
+    if (intersection == path::null_vertex) {
         throw NoPathException("No intersection found.");
     }
     
