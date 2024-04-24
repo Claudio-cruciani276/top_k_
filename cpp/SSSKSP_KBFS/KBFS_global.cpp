@@ -48,13 +48,27 @@ void KBFS_global::printInfo() const {
         }
     }
 
+void pauseForDebug() {
+    std::cout << "Debug pause - premi Enter per continuare..." << std::endl;
+    std::cin.get();
+    //std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+}
+
+void printDeque(const std::deque<vertex>& dq) {
+    std::cout << "Contenuto della deque:" << std::endl;
+    for (vertex v : dq) {
+        std::cout << v << " ";
+    }
+    std::cout << std::endl;
+}
+
 
 
 // Implementazione del distruttore
 KBFS_global::~KBFS_global() {
     // Dato che graph è un puntatore a NetworKit::Graph passato nel costruttore,
     // la gestione della memoria di graph è responsabilità di chi fornisce il puntatore.
-    // Non deallocare graph qui(non usare delete graph; qui).
+    // Non deallocare graph qui.
 
     // Non ci sono allocazioni dinamiche esplicite (con new) per gli altri membri,
     // quindi non ci sono operazioni specifiche di deallocazione richieste nel distruttore.
@@ -94,7 +108,7 @@ void KBFS_global::generalized_bfs() {
         setptx.insert(u);
 
         // Crea l'entry per PQ
-        entry e = std::make_tuple(1, u, p,setptx, "regular", path::null_vertex, std::vector<path>());
+        entry e = std::make_tuple(1, u, p,setptx, "reg", path::null_vertex, std::vector<path>());
         PQ.push_back(e);
 
         //printEntryPQ(e);
@@ -122,9 +136,9 @@ void KBFS_global::generalized_bfs() {
         std::pop_heap(PQ.begin(), PQ.end(), CompareEntry());
         // Ora, l'elemento minimo è all'ultima posizione di PQ
         entry e = PQ.back();
-        //std::cout << std::endl;
-        //std::cout << "Estrazione da PQ -> visita sulla entry";
-        //printEntryPQ(e);
+        std::cout << std::endl;
+        std::cout << "Estrazione da PQ -> visita sulla entry";
+        printEntryPQ(e);
         
 
         PQ.pop_back(); // Rimuovi l'elemento dall'heap
@@ -223,7 +237,7 @@ void KBFS_global::generalized_bfs() {
                 assert(!non_sat[vtx]); // Verifica che non_sat[vtx] sia false
                 //??assert(distance_profile[vtx].empty()); // Verifica che distance_profile[vtx] sia vuoto
                 //Versione python ha un of che qui probabilmente non serve
-                //std::cout << "VISITA EXTRA: ";
+                std::cout << "VISITA EXTRA: ";
                 beyond(wgt, vtx, ptx, setptx, flag, paths); 
             }
 
@@ -238,6 +252,7 @@ void KBFS_global::standard(dist WEIG, vertex VERT, const path& PATH, const std::
     assert(top_k[VERT].size() < K);
     assert(VERT==PATH.getLastNode());
     //AGGIUNGO IL CAMMINO MINIMO ESTRATTO
+    //PATH.printPath();
     top_k[VERT].push_back(PATH);
     
     assert(std::is_sorted(top_k[VERT].begin(), top_k[VERT].end(), [](const path& a, const path& b) {
@@ -429,6 +444,7 @@ bool KBFS_global::binary_search_alt(std::deque<std::pair<dist,path>>& arr, const
 } 
 
 void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::set<vertex>& PATHSET, const std::string& flag, const pathlist& paths) {
+
     extra_visits += 1; 
     assert(num_non_sat > 0); 
     // Verifica che il nodo VERT sia considerato saturato, che ci siano almeno K percorsi in top_k[VERT], 
@@ -441,6 +457,12 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
     //assert(!visited[root]);
     std::set<vertex> skip; // Inizializza il set di nodi da saltare
     std::set<vertex> neighbors; 
+
+    pauseForDebug();
+
+    std::cout << std::endl;
+    std::cout << "flag: "<<flag;
+   
 
     if (flag == "spec") {
         //PathsForward(neighbors,paths);  ma serve anche skip!!!
@@ -492,6 +514,10 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
 
             int count_value = count(vr);
             int max_to_generate = K - (top_k[vr].size() + count_value);
+
+            std::cout << std::endl;
+            std::cout <<"nodo in Pigreco set: "<<vr<<" , MAX_TO_GENERATE: "<<max_to_generate;
+            
 
             if (max_to_generate <= 0) {
                 num_tested++;
@@ -605,6 +631,10 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
     } 
     else{   //se pigreco set è vuoto
         // Svuota l'insieme pigreco_set[VERT],clear semplicemente si assicura che è vuoto
+
+        std::cout << std::endl;
+        std::cout <<"pIGRECO SET DA CREARE";
+
         pigreco_set[VERT].clear();
 
         visited[VERT] = true;
@@ -639,6 +669,7 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
         init_avoidance(PATH);
 
         while (!localPQ.empty()) {
+
             vertex vr = localPQ.front(); // Ottiene il primo elemento
             localPQ.pop_front(); // Rimuove il primo elemento dalla coda
             bool detour = true;
@@ -664,6 +695,8 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
                 int n_generated = 0;
                 num_tested++;
                 if (detour) {
+                    std::cout << std::endl;
+                    std::cout <<"1-nodo in Pigreco set: "<<vr<<" , MAX_TO_GENERATE: "<<max_to_generate;
                     auto detours = find_detours(VERT, vr, max_to_generate, PATH.w, PATH, count_value);
                     for (const auto& DET : detours) {
                         //if (DET.seq.empty()) break; // Interrompe il ciclo se il detour è vuoto
@@ -750,9 +783,15 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
                 queue_visited.push_back(prd); 
                 localPQ.push_back(prd);
             }
+            std::cout << " -taglia:"<<localPQ.size();
+            //printDeque(localPQ);
+
 
             
         }
+
+        std::cout << std::endl;
+        std::cout <<"Fine while";
 
         // Ripristina lo stato di 'visited' per i nodi che erano stati visitati
         while (!queue_visited.empty()) {
@@ -880,12 +919,18 @@ bool KBFS_global::is_simple(const path& p) {
 
 
 std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t at_most_to_be_found, dist dist_path, const path& coming_path, size_t count_value) {
-    
+    std::cout << std::endl;
+    std::cout << "find";
+    std::cout << std::endl;
+    std::cout << "find";
+    std::cout << std::endl;
+    std::cout << "ei";
     assert(top_k[target].size() >= 1);
     assert(top_k[target].size() < K);
     assert(std::is_sorted(top_k[target].begin(), top_k[target].end(), [](const path& a, const path& b) { return a.seq.size() < b.seq.size(); }));
     assert(top_k[source].size() == K);
-    assert(dist_path==coming_path.getSize()-1);
+
+    std::cout << "FindDetorurs--- ";
 
     //int n_generated = 0;
     std::vector<path> detours_found; 
@@ -900,6 +945,7 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
 
     if (ignore_nodes[target]) {
         //assert(sin_distance_profile.empty());
+        std::cout <<"fine findEtorus1" ;
         return detours_found; 
     }
 
@@ -940,6 +986,7 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
     } catch (const NoPathException& e) {
         //sinDistanceProfile.clear(); // 
         //detours.clear();
+        std::cout <<"fine findEtorus2" ;
         return detours_found;// Restituisce un vettore vuoto indicando l'assenza di ulteriori percorsi
     } catch (const std::exception& e) {
         // Gestisci altre eccezioni potenziali
@@ -962,6 +1009,7 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
             // Pulisci le strutture e termina
             // cancellare PQ,paths ma c++ gestisce le variabili locali
             //detours.clear(); 
+            std::cout <<"fine findEtorus3" ;
             return detours_found;
         }
 
@@ -987,6 +1035,7 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
             //yen_PQ.clear(); 
             //paths.clear(); 
             //detours_found.clear(); 
+            std::cout <<"fine findEtorus4" ;
             return detours_found; // Restituisci un vettore vuoto per indicare che non ci sono ulteriori percorsi o per simulare 'yield None'            
         }  
 
@@ -1017,6 +1066,7 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
         detours.push_back(P_det);//per yen
 
         if (detours_found.size() == at_most_to_be_found) {
+            std::cout <<"fine findEtorus5" ;
             return detours_found;
         }
 
@@ -1172,6 +1222,7 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
 
 
     //return std::vector<path>(paths.begin(), paths.end()); // Converti set in vector per il ritorno
+    std::cout <<"fine findEtorus6" ;
     return detours_found;
 }
 
@@ -1219,6 +1270,11 @@ path KBFS_global::bidir_BFS(vertex source, vertex target, dist bound_on_length) 
     //result_path.w = result_path.seq.size() - 1;
 
     assert(result_path.w < bound_on_length);
+    //std::cout << std::endl;
+    std::cout << "fine bfs";
+    result_path.printPath();
+
+       
     return result_path;
 }
 

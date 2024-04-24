@@ -70,19 +70,11 @@ int main() {
 
 
 
-
-    std::vector<int> verticesSet = {1, 2, 3,4,5};
+    std::vector<vertex> verticesSet = {1,2,3,4,5};
     path newPath(verticesSet);
-    newPath.printPath();
-    // Prova a trovare un path specifico
-    std::vector<int> verticesSet100 = {5, 22, 32,33};
-    path searchPath(verticesSet100);  // Path che stiamo cercando
-    
-    //newPath.printPath();
-    searchPath.printPath();
-    path nuovo(newPath,searchPath,true);
-    nuovo.printPath();
-    
+    std::set<vertex> predecessors_setsss;
+
+
 
 
 
@@ -121,10 +113,25 @@ int main() {
 
     std::cout<<"Graph after CC has "<<graph->numberOfNodes()<<" vertices and "<<graph->numberOfEdges()<<" edges\n";
     //ciao
-    size_t K = 4; // Numero di percorsi più brevi da trovare
-    vertex root = 0;
+    size_t K = 3; // Numero di percorsi più brevi da trovare
+    vertex root = 4;
 
-    KBFS_global* KBFS_global_MANAGER = new KBFS_global(graph, K, root);
+    newPath.printPath();
+  
+    //newPath.printPath();
+    //searchPath.printPath();
+
+    for (size_t i = 0; i < newPath.seq.size() - 1; ++i) {
+        predecessors_setsss.insert(newPath.seq[i]);
+    }
+     
+    std::cout << "Predecessors Set contains: ";
+
+    for (int vertex : predecessors_setsss) {
+        std::cout << vertex << " ";
+    }
+
+    //KBFS_global* KBFS_global_MANAGER = new KBFS_global(graph, K, root);
     
     //for (NetworKit::node u : graph->nodeRange()) {
     //    std::cout << "Nodo: " << u << std::endl;
@@ -154,7 +161,7 @@ int main() {
     });
 */
     
-    KBFS_global_MANAGER->generalized_bfs();
+    //KBFS_global_MANAGER->generalized_bfs();
     //KBFS_global_MANAGER->binary_TEST();
 
 /*
@@ -165,6 +172,7 @@ int main() {
     KBFS_global kbfs(graph, K, root);
     std::cout<<"   il numero k è    "<<kbfs.K;
     //KBFS_global kbfs();
+    
   
     //kbfs.printStructures();
 */
