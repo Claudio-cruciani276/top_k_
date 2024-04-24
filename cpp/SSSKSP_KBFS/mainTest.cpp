@@ -114,24 +114,15 @@ int main() {
     std::cout<<"Graph after CC has "<<graph->numberOfNodes()<<" vertices and "<<graph->numberOfEdges()<<" edges\n";
     //ciao
     size_t K = 3; // Numero di percorsi più brevi da trovare
-    vertex root = 4;
+    vertex root = 0;
 
-    newPath.printPath();
   
     //newPath.printPath();
     //searchPath.printPath();
 
-    for (size_t i = 0; i < newPath.seq.size() - 1; ++i) {
-        predecessors_setsss.insert(newPath.seq[i]);
-    }
-     
-    std::cout << "Predecessors Set contains: ";
 
-    for (int vertex : predecessors_setsss) {
-        std::cout << vertex << " ";
-    }
 
-    //KBFS_global* KBFS_global_MANAGER = new KBFS_global(graph, K, root);
+    KBFS_global* KBFS_global_MANAGER = new KBFS_global(graph, K, root);
     
     //for (NetworKit::node u : graph->nodeRange()) {
     //    std::cout << "Nodo: " << u << std::endl;
@@ -161,7 +152,7 @@ int main() {
     });
 */
     
-    //KBFS_global_MANAGER->generalized_bfs();
+    KBFS_global_MANAGER->generalized_bfs();
     //KBFS_global_MANAGER->binary_TEST();
 
 /*

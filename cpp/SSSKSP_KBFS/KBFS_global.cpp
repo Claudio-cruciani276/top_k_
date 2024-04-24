@@ -212,7 +212,7 @@ void KBFS_global::generalized_bfs() {
                         if (detour_done[ngx]) {
                             
                             bool found = binary_search_alt(distance_profile[ngx], newPath);
-                            // < di ptx o di newPath!!!!!!!!!!!!!!!!!!
+                            // 
                             if (last_det_path[ngx] < newPath.w) {
                                 detour_done[ngx] = false;
                                 last_det_path[ngx] = 0;
@@ -243,7 +243,7 @@ void KBFS_global::generalized_bfs() {
 
         } 
     }   
-    printTopK(); 
+    //printTopK(); 
 }
 
 
@@ -458,7 +458,7 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
     std::set<vertex> skip; // Inizializza il set di nodi da saltare
     std::set<vertex> neighbors; 
 
-    pauseForDebug();
+    //pauseForDebug();
 
     std::cout << std::endl;
     std::cout << "flag: "<<flag;
@@ -489,7 +489,7 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
     //"""ragionare sul fatto che se è si svuotato nel corso dell'esecuzione
     //questo if non deve essere comunque superato"""
     if (!pigreco_set[VERT].empty()) {
-        init_avoidance(PATH);
+        init_avoidance(PATH); 
         auto it = pigreco_set[VERT].begin();
         while (it != pigreco_set[VERT].end()) {
             vertex vr = *it;
@@ -516,7 +516,7 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
             int max_to_generate = K - (top_k[vr].size() + count_value);
 
             std::cout << std::endl;
-            std::cout <<"nodo in Pigreco set: "<<vr<<" , MAX_TO_GENERATE: "<<max_to_generate;
+            std::cout <<"2-nodo in Pigreco set: "<<vr<<" , MAX_TO_GENERATE: "<<max_to_generate;
             
 
             if (max_to_generate <= 0) {
@@ -633,7 +633,7 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
         // Svuota l'insieme pigreco_set[VERT],clear semplicemente si assicura che è vuoto
 
         std::cout << std::endl;
-        std::cout <<"pIGRECO SET DA CREARE";
+        std::cout <<"PIGRECO SET di "<<VERT<< " da CREARE";
 
         pigreco_set[VERT].clear();
 
@@ -667,6 +667,9 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
         }
 
         init_avoidance(PATH);
+        std::cout << std::endl;
+        std::cout <<"PATH in questa iterazione: ";
+        PATH.printPath();
 
         while (!localPQ.empty()) {
 
@@ -697,7 +700,7 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
                 if (detour) {
                     std::cout << std::endl;
                     std::cout <<"1-nodo in Pigreco set: "<<vr<<" , MAX_TO_GENERATE: "<<max_to_generate;
-                    auto detours = find_detours(VERT, vr, max_to_generate, PATH.w, PATH, count_value);
+                    pathlist detours = find_detours(VERT, vr, max_to_generate, PATH.w, PATH, count_value);
                     for (const auto& DET : detours) {
                         //if (DET.seq.empty()) break; // Interrompe il ciclo se il detour è vuoto
 
@@ -783,6 +786,7 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
                 queue_visited.push_back(prd); 
                 localPQ.push_back(prd);
             }
+            std::cout << std::endl;
             std::cout << " -taglia:"<<localPQ.size();
             //printDeque(localPQ);
 
@@ -925,15 +929,19 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
     std::cout << "find";
     std::cout << std::endl;
     std::cout << "ei";
+    std::cout << std::endl;
     assert(top_k[target].size() >= 1);
     assert(top_k[target].size() < K);
     assert(std::is_sorted(top_k[target].begin(), top_k[target].end(), [](const path& a, const path& b) { return a.seq.size() < b.seq.size(); }));
     assert(top_k[source].size() == K);
 
     std::cout << "FindDetorurs--- ";
+    std::cout << std::endl;
 
     //int n_generated = 0;
     std::vector<path> detours_found; 
+    std::cout << "Number of paths in detours_found: " << detours_found.size() << std::endl;
+    std::cout << "Capacity of detours_found: " << detours_found.capacity() << std::endl;
 
     std::vector<YenEntry> yen_PQ; 
     //trasforma yen_PQ in un heah
@@ -942,6 +950,13 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
     std::set<path> paths; 
 
     assert(!ignore_nodes[source]);
+
+    // per controllare
+    std::cout << "Index-Value pairs of ignore_nodes: ";
+    for (size_t i = 0; i < ignore_nodes.size(); ++i) {
+        std::cout << "(" << i << ", " << std::boolalpha << ignore_nodes[i] << ") ";
+    }
+    std::cout << std::endl;
 
     if (ignore_nodes[target]) {
         //assert(sin_distance_profile.empty());
@@ -963,6 +978,11 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
         }
     }
 
+    std::cout << std::endl;
+    std::cout <<"source: "<<source<<" e target: "<<target<<" bound[target]-dist_path: "<<bound[target] - dist_path;
+    std::cout << std::endl;
+    std::cout << std::endl;
+    path altP = bidir_BFS(source, target, bound[target] - dist_path);
 
     /*"""??
     if (bound[target] == top_k[target].back().size()- 1) {
@@ -1233,49 +1253,62 @@ path KBFS_global::bidir_BFS(vertex source, vertex target, dist bound_on_length) 
     succ.clear();
     intersection = path::null_vertex; 
 
-    bidir_pred_succ(source, target, bound_on_length, pred, succ, intersection);
-    /* fatto con ECCEZIONE sotto
-    if (intersection == null_vertex) {
-        return path();  // Ritorna un percorso vuoto se non c'è intersezione
-    }*/
-    
-    if (intersection == path::null_vertex) {
-        throw NoPathException("No path found within the given bound length.");
+    try{
+        bidir_pred_succ(source, target, bound_on_length, pred, succ, intersection);
+        /* fatto con ECCEZIONE sotto
+        if (intersection == null_vertex) {
+            return path();  // Ritorna un percorso vuoto se non c'è intersezione
+        }*/
+        
+        if (intersection == path::null_vertex) {
+            throw NoPathException("No path found within the given bound length.");
+        }
+
+        vertex current = intersection;
+
+        // Costruzione del percorso dalla sorgente all'intersezione
+        path pre_path;  // Uso un temporaneo per costruire il percorso inverso
+        while (current != path::null_vertex && current != source) {
+            pre_path.addVertex(current);
+            current = pred[current];
+        }
+        pre_path.addVertex(source);  // Aggiungi la sorgente all'inizio del percorso
+        std::reverse(pre_path.begin(), pre_path.end());  // Inverte il percorso per avere l'ordine corretto
+
+        // Costruzione del percorso dall'intersezione alla destinazione
+        current = intersection;
+        path post_path;
+        while (current != path::null_vertex && current != target) {
+            post_path.addVertex(current);
+            current = succ[current];
+        }
+        post_path.addVertex(target);  // Aggiungi il target alla fine del percorso
+        
+        path result_path(pre_path,post_path,true);
+        // Concatenazione dei due percorsi
+        //result_path.seq.insert(result_path.seq.end(), pre_path.begin(), pre_path.end());
+        //result_path.seq.insert(result_path.seq.end(), post_path.begin() + 1, post_path.end());  // Evita duplicazione dell'intersezione
+        //result_path.w = result_path.seq.size() - 1;
+
+        assert(result_path.w < bound_on_length);
+        std::cout << std::endl;
+        std::cout << "fine bfs, path: ";
+        result_path.printPath();
+
+        
+        return result_path;
+
+    } catch (const NoPathException& e) {
+        //continue; //CONTROLLA
+        throw NoPathException("suitable path not found");
+    } catch (const std::exception& e) {
+        // Qui gestisci altre eccezioni inaspettate
+        std::cerr << "Unexpected error: " << e.what() << std::endl;
+        //throw; // rilanciare l'eccezione per ulteriore gestione esterna
     }
 
-    vertex current = intersection;
-
-    // Costruzione del percorso dalla sorgente all'intersezione
-    path pre_path;  // Uso un temporaneo per costruire il percorso inverso
-    while (current != path::null_vertex && current != source) {
-        pre_path.addVertex(current);
-        current = pred[current];
-    }
-    pre_path.addVertex(source);  // Aggiungi la sorgente all'inizio del percorso
-    std::reverse(pre_path.begin(), pre_path.end());  // Inverte il percorso per avere l'ordine corretto
-
-    // Costruzione del percorso dall'intersezione alla destinazione
-    current = intersection;
-    path post_path;
-    while (current != path::null_vertex && current != target) {
-        post_path.addVertex(current);
-        current = succ[current];
-    }
-    post_path.addVertex(target);  // Aggiungi il target alla fine del percorso
-    
-    path result_path(pre_path,post_path,true);
-    // Concatenazione dei due percorsi
-    //result_path.seq.insert(result_path.seq.end(), pre_path.begin(), pre_path.end());
-    //result_path.seq.insert(result_path.seq.end(), post_path.begin() + 1, post_path.end());  // Evita duplicazione dell'intersezione
-    //result_path.w = result_path.seq.size() - 1;
-
-    assert(result_path.w < bound_on_length);
-    //std::cout << std::endl;
-    std::cout << "fine bfs";
-    result_path.printPath();
-
-       
-    return result_path;
+    path nullPath;
+    return nullPath;
 }
 
  
