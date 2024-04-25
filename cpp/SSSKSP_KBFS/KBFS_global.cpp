@@ -29,7 +29,9 @@ KBFS_global::KBFS_global(NetworKit::Graph *G, int num_k, vertex r)
     path_to_add(G->numberOfNodes()),
     extra_visits(0),
     detours (),
-    queue_visited()
+    queue_visited(),
+    pred(graph->numberOfNodes()),
+    succ(graph->numberOfNodes())
 {
     non_sat[root] = false; 
     // Altre inizializzazioni possono andare qui se necessario
@@ -530,8 +532,8 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
            
             //"""Generazione dei detours,il codice python restituisce una DET per voltr
             //e qualndo restituisce un Det==none"""
-            std::vector<path> detours = find_detours(VERT, vr, max_to_generate, PATH.seq.size() - 1, PATH, count_value);
-            for (const auto& DET : detours) {
+            std::vector<path> detours_bey = find_detours(VERT, vr, max_to_generate, PATH.seq.size() - 1, PATH, count_value);
+            for (const auto& DET : detours_bey) {
                 //if (DET.seq.empty()) break;
 
                 //n_generated++;
@@ -700,8 +702,8 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
                 if (detour) {
                     std::cout << std::endl;
                     std::cout <<"1-nodo in Pigreco set: "<<vr<<" , MAX_TO_GENERATE: "<<max_to_generate;
-                    pathlist detours = find_detours(VERT, vr, max_to_generate, PATH.w, PATH, count_value);
-                    for (const auto& DET : detours) {
+                    pathlist detours_bey = find_detours(VERT, vr, max_to_generate, PATH.w, PATH, count_value);
+                    for (const auto& DET : detours_bey) {
                         //if (DET.seq.empty()) break; // Interrompe il ciclo se il detour è vuoto
 
                         //n_generated++;
@@ -923,13 +925,7 @@ bool KBFS_global::is_simple(const path& p) {
 
 
 std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t at_most_to_be_found, dist dist_path, const path& coming_path, size_t count_value) {
-    std::cout << std::endl;
-    std::cout << "find";
-    std::cout << std::endl;
-    std::cout << "find";
-    std::cout << std::endl;
-    std::cout << "ei";
-    std::cout << std::endl;
+
     assert(top_k[target].size() >= 1);
     assert(top_k[target].size() < K);
     assert(std::is_sorted(top_k[target].begin(), top_k[target].end(), [](const path& a, const path& b) { return a.seq.size() < b.seq.size(); }));
@@ -939,9 +935,8 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
     std::cout << std::endl;
 
     //int n_generated = 0;
+    detours.clear();
     std::vector<path> detours_found; 
-    std::cout << "Number of paths in detours_found: " << detours_found.size() << std::endl;
-    std::cout << "Capacity of detours_found: " << detours_found.capacity() << std::endl;
 
     std::vector<YenEntry> yen_PQ; 
     //trasforma yen_PQ in un heah
@@ -950,13 +945,6 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
     std::set<path> paths; 
 
     assert(!ignore_nodes[source]);
-
-    // per controllare
-    std::cout << "Index-Value pairs of ignore_nodes: ";
-    for (size_t i = 0; i < ignore_nodes.size(); ++i) {
-        std::cout << "(" << i << ", " << std::boolalpha << ignore_nodes[i] << ") ";
-    }
-    std::cout << std::endl;
 
     if (ignore_nodes[target]) {
         //assert(sin_distance_profile.empty());
@@ -982,7 +970,7 @@ std::vector<path> KBFS_global::find_detours(vertex source, vertex target, size_t
     std::cout <<"source: "<<source<<" e target: "<<target<<" bound[target]-dist_path: "<<bound[target] - dist_path;
     std::cout << std::endl;
     std::cout << std::endl;
-    path altP = bidir_BFS(source, target, bound[target] - dist_path);
+
 
     /*"""??
     if (bound[target] == top_k[target].back().size()- 1) {
@@ -1254,7 +1242,8 @@ path KBFS_global::bidir_BFS(vertex source, vertex target, dist bound_on_length) 
     intersection = path::null_vertex; 
 
     try{
-        bidir_pred_succ(source, target, bound_on_length, pred, succ, intersection);
+        //bidir_pred_succ(source, target, bound_on_length, pred, succ, intersection);
+        bidir_pred_succ(source, target, bound_on_length,intersection);
         /* fatto con ECCEZIONE sotto
         if (intersection == null_vertex) {
             return path();  // Ritorna un percorso vuoto se non c'è intersezione
@@ -1313,7 +1302,8 @@ path KBFS_global::bidir_BFS(vertex source, vertex target, dist bound_on_length) 
 
  
 
-void KBFS_global::bidir_pred_succ(vertex source, vertex target, dist bound_on_length, std::unordered_map<vertex, vertex>& pred, std::unordered_map<vertex, vertex>& succ, vertex& intersection) {
+//void KBFS_global::bidir_pred_succ(vertex source, vertex target, dist bound_on_length, std::unordered_map<vertex, vertex>& pred, std::unordered_map<vertex, vertex>& succ, vertex& intersection) {
+void KBFS_global::bidir_pred_succ(vertex source, vertex target, dist bound_on_length, vertex& intersection) {
     
     if (ignore_nodes[source] || ignore_nodes[target] || locally_ignore_nodes[source] || locally_ignore_nodes[target]) {
         throw NoPathException("Source or target node is ignored.");
@@ -1355,15 +1345,21 @@ void KBFS_global::bidir_pred_succ(vertex source, vertex target, dist bound_on_le
                     if (locally_ignore_edges[graph->edgeId(v, w)]) return;
                     if (w == source || ignore_nodes[w] || locally_ignore_nodes[w]) return;
 
-                    if (succ.count(w)) {  
-                        intersection = w;  // INTERSEZIONE TROVATA!!!
-                        return;
-                    }
                     //le mappe forniscono il metodo count() che ritorna 0 se la chiave specificata non è presente nella mappa e 1 se la chiave è presente
                     if (!pred.count(w)) {  
                         next_level.push_back(w);
                         pred[w] = v;  
                     }
+
+                    if (succ.count(w)) {  
+                        intersection = w;  // INTERSEZIONE TROVATA!!!
+                        return;
+                    }
+                    //le mappe forniscono il metodo count() che ritorna 0 se la chiave specificata non è presente nella mappa e 1 se la chiave è presente
+                    //if (!pred.count(w)) {  
+                    //    next_level.push_back(w);
+                    //    pred[w] = v;  
+                    //}
                 });
                 // Stop SE L'INTERSEZIONE È TROVATA,QUI È OBBL. PERCHE IL RETURN NON TERMINA LA CHIAMATA MA ESCE DALLA LAMBDA
                 if (intersection != path::null_vertex) break;  
@@ -1379,15 +1375,19 @@ void KBFS_global::bidir_pred_succ(vertex source, vertex target, dist bound_on_le
                     if (locally_ignore_edges[graph->edgeId(v, w)]) return;
                     if (w == target || ignore_nodes[w] || locally_ignore_nodes[w]) return;
 
-                    if (pred.count(w)) {  
-                        intersection = w;  // ITERSEZIONE TROVATA
-                        return;
-                    }
-
                     if (!succ.count(w)) {  
                         next_level.push_back(w);
                         succ[w] = v;  
                     }
+                    if (pred.count(w)) {  
+                        intersection = w;  // ITERSEZIONE TROVATA
+                        return;
+                    }
+                    /*
+                    if (!succ.count(w)) {  
+                        next_level.push_back(w);
+                        succ[w] = v;  
+                    }*/
                 });
 
                 if (intersection != path::null_vertex) break;  // Stop SE INTERSEZIONE TROVATA

@@ -279,7 +279,9 @@ public:
 
     void PathsForward(std::set<vertex>& neighbors, const std::vector<path>&  paths);
     bool binary_search_alt(std::deque<std::pair<dist,path>>& arr, const path& x);
-    void bidir_pred_succ(vertex source, vertex target, dist bound_on_length, std::unordered_map<vertex, vertex>& pred, std::unordered_map<vertex, vertex>& succ, vertex& intersection);
+    //void bidir_pred_succ(vertex source, vertex target, dist bound_on_length, std::unordered_map<vertex, vertex>& pred, std::unordered_map<vertex, vertex>& succ, vertex& intersection);
+    void bidir_pred_succ(vertex source, vertex target, dist bound_on_length, vertex& intersection);
+
 
     // Distruttore
     ~KBFS_global();
