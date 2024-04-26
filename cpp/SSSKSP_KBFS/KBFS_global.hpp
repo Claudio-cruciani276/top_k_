@@ -224,7 +224,7 @@ struct YenEntry {
 };
 
 
-
+//meglio usare la setssa struttura usata per YenEntry
 using entry = std::tuple<dist, vertex, path, std::set<vertex>, std::string, vertex, std::vector<path>>;
 
 // Comparatore per l'ordinamento crescente basato su 'dist', SIMILE AL CODICE PROF  di heap_min_comparator

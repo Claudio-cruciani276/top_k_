@@ -112,7 +112,6 @@ void KBFS_global::generalized_bfs() {
         // Crea l'entry per PQ
         entry e = std::make_tuple(1, u, p,setptx, "reg", path::null_vertex, std::vector<path>());
         PQ.push_back(e);
-
         //printEntryPQ(e);
 
         // Aggiungi la pair (1, path) nella deque corrispondente a u in distance_profile
@@ -204,11 +203,14 @@ void KBFS_global::generalized_bfs() {
                     // Crea e aggiungi la nuova entry in PQ
                     entry newEntry = std::make_tuple(wgt + 1, ngx, newPath, newSetptx, "spec", source, path_to_add[ngx]);
                     PQ.push_back(newEntry);
+                    std::push_heap(PQ.begin(), PQ.end(), CompareEntry());  // Riordina per mantenere l'heap
                     path_to_add[ngx].clear(); // Resetta path_to_add per ngx
             
 
                     // PQ ordinato dopo l'inserimento di nuove entry
-                    assert(std::is_sorted(PQ.begin(), PQ.end(), CompareEntry()));
+                    //la struttura di un heap garantisce solo che ogni nodo è inferiore (o superiore, a seconda del comparatore) ai suoi figli, ma non che gli
+                    // elementi siano completamente ordinati come in un array o in un vettore ordinato.
+                    //assert(std::is_sorted(PQ.begin(), PQ.end(), CompareEntry()));
 
                     if (non_sat[ngx]) {
                         if (detour_done[ngx]) {
@@ -245,7 +247,7 @@ void KBFS_global::generalized_bfs() {
 
         } 
     }   
-    //printTopK(); 
+    printTopK(); 
 }
 
 
@@ -335,6 +337,7 @@ void KBFS_global::standard(dist WEIG, vertex VERT, const path& PATH, const std::
             assert(std::find(PQ.begin(), PQ.end(),std::make_tuple(WEIG + 1, ngx, newPath, newPATHSET, flag, source, path_to_add[ngx])) == PQ.end());
             //PQ.push_back(std::make_tuple(WEIG + 1, ngx,newPath, newPATHSET, flag, source, path_to_add[ngx]));
             PQ.push_back(newEntry);
+            std::push_heap(PQ.begin(), PQ.end(), CompareEntry());  // Riordina per mantenere l'heap
             path_to_add[ngx].clear(); // equivalente a self.path_to_add[ngx]=[] in Python
         } else {
             //Controllo se l'entry esiste già in PQ
@@ -344,9 +347,11 @@ void KBFS_global::standard(dist WEIG, vertex VERT, const path& PATH, const std::
             assert(std::find(PQ.begin(), PQ.end(),std::make_tuple(WEIG + 1, ngx, newPath, newPATHSET, "reg", path::null_vertex, std::vector<path>())) == PQ.end());
             //PQ.push_back(std::make_tuple(WEIG + 1, ngx, newPath, newPATHSET, "reg", path::null_vertex, std::vector<path>()));
             PQ.push_back(newEntry);
-        }   
-   
-       // assert(std::is_sorted(PQ.begin(), PQ.end(), CompareEntry()));
+            std::push_heap(PQ.begin(), PQ.end(), CompareEntry());  // Riordina per mantenere l'heap
+        }  
+        //questo assert non va bene logicamente 
+        //la struttura di un heap garantisce solo che ogni nodo è inferiore (o superiore, a seconda del comparatore) ai suoi figli
+        //assert(std::is_sorted(PQ.begin(), PQ.end(), CompareEntry()));
 
 
         if (non_sat[ngx]) {
@@ -834,9 +839,12 @@ void KBFS_global::beyond(dist WEIG, vertex VERT, const path& PATH, const std::se
         assert(std::find(PQ.begin(), PQ.end(), newEntry) == PQ.end());
 
         PQ.push_back(newEntry);
+        std::push_heap(PQ.begin(), PQ.end(), CompareEntry());  // Riordina per mantenere l'heap
         path_to_add[ngx].clear();
 
-        assert(std::is_sorted(PQ.begin(), PQ.end(), CompareEntry()));
+        //la struttura di un heap garantisce solo che ogni nodo è inferiore (o superiore, a seconda del comparatore) ai suoi figli, ma non che gli 
+        //elementi siano completamente ordinati come in un array o in un vettore ordinato. L assert cosi non va bene
+        //assert(std::is_sorted(PQ.begin(), PQ.end(), CompareEntry()));
 
         if (non_sat[ngx]) {
             if (detour_done[ngx]) {
